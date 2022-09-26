@@ -1,0 +1,128 @@
+---
+- name: Provision the applabapi host
+  block:
+    - name: Load secrets
+      ansible.builtin.include_vars:
+        file: secrets.yaml
+
+    - name: Disable Automatic Updates
+      ansible.builtin.apt:
+        name: unattended-upgrades
+        state: absent
+        purge: true
+
+    - name: Upgrade all packages to latest version
+      ansible.builtin.apt:
+        upgrade: dist
+        update-cache: true
+      when: upgrade_packages | bool
+
+    - name: Create applab-api local user
+      ansible.builtin.user:
+        name: applab-api
+        comment: applab-api application account
+        shell: /bin/bash
+        group: applab-api
+        password: '!'
+        expires: -1
+
+    - name: Create applab-api directory
+      ansible.builtin.file:
+        path: /srv/applab-api
+        owner: applab-api
+        group: applab-api
+        state: directory
+        mode: 0775
+
+    - name: Create applab-api secrets directory
+      ansible.builtin.file:
+        path: /opt/applab-api/etc/secrets
+        owner: applab-api
+        group: applab-api
+        state: directory
+        mode: 0775
+
+    - name: Copy applab-api app secrets file
+      ansible.builtin.copy:
+        src: appAccounts.json
+        dest: /opt/applab-api/etc/secrets/appAccounts.json
+        owner: applab-api
+        group: applab-api
+        mode: 0660
+
+    - name: Copy applab-api sudoers file
+      ansible.builtin.copy:
+        src: applab-api-sudoers
+        dest: /etc/sudoers.d/applab-api
+        owner: root
+        group: root
+        mode: 0440
+
+    - name: Check if devops exists
+      ansible.builtin.stat:
+        path: /var/lib/git/devops
+      register: devops_repo
+
+    - name: Configure Devops repo
+      block:
+        - name: Clone DevOps repo
+          ansible.builtin.git:
+            repo: https://oauth2:{{ devops_access_token }}@git.corp.mutualink.net/edge/devops.git
+            dest: /var/lib/git/devops
+            version: master
+
+        - name: Change owner of DevOps repo
+          ansible.builtin.file:
+            path: /var/lib/git/devops
+            owner: applab-api
+            group: applab-api
+            mode: 0775
+            recurse: true
+
+        - name: Set git config name and email
+          community.general.git_config:
+            name: '{{ item.name }}'
+            value: '{{ item.value }}'
+          loop:
+            - {name: 'user.name', value: 'applab-api'}
+            - {name: 'user.email', value: 'applab-api@mutualink.net'}
+      when: not devops_repo.stat.exists
+
+    - name: Deploy applab-api nginx config for reverse proxy
+      ansible.builtin.template:
+        src: applab-api.conf.j2
+        dest: /etc/nginx/sites-available/applab-api.conf
+        owner: root
+        group: root
+        mode: 0644
+      register: applabui_nginx
+
+    - name: Create a sites-enabled symbolic link
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/applab-api.conf
+        dest: /etc/nginx/sites-enabled/applab-api
+        owner: root
+        group: root
+        state: link
+        force: true
+      register: sites_enabled
+
+    - name: Reload nginx service
+      ansible.builtin.service:
+        name: nginx
+        enabled: true
+        state: reloaded
+      when: applabui_nginx.changed or sites_enabled.changed
+
+    - name: Reboot system
+      block:
+        - name: Rebooting system. Please stand by for results.
+          ansible.builtin.reboot:
+            search_paths: '/lib/molly-guard'
+          register: reboot_details
+
+        - name: Reboot results
+          ansible.builtin.debug:
+            var: reboot_details
+      when: reboot_system | bool
+  become: true

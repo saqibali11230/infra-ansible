@@ -1,0 +1,133 @@
+---
+- name: Provision eieio proxy apache layer
+  block:
+    - name: Install required apache packages
+      ansible.builtin.apt:
+        name: apache2
+        install_recommends: false
+        update_cache: true
+
+    - name: Make apache ssl directory
+      ansible.builtin.file:
+        path: /etc/apache2/ssl
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Enable ssl apache module
+      community.general.apache2_module:
+        name: ssl
+
+    - name: Enable proxy apache module
+      community.general.apache2_module:
+        name: proxy
+
+    - name: Enable proxy_http apache module
+      community.general.apache2_module:
+        name: proxy_http
+
+    - name: Enable ldap apache module
+      community.general.apache2_module:
+        name: ldap
+
+    - name: Enable authnz_ldap apache module
+      community.general.apache2_module:
+        name: authnz_ldap
+
+    - name: Enable rewrite apache module
+      community.general.apache2_module:
+        name: rewrite
+
+    - name: Copy {{ env }} ssl files
+      ansible.builtin.copy:
+        src: '{{ env }}-{{ item }}'
+        dest: /etc/apache2/ssl/{{ item }}
+        owner: root
+        group: root
+        mode: 0600
+      with_items:
+        - SSLCertificateChainFile
+        - SSLCertificateFile
+        - SSLCertificateKeyFile
+      register: ssl_files
+
+    - name: Remove 000-default.conf symlink
+      ansible.builtin.file:
+        path: /etc/apache2/sites-enabled/000-default.conf
+        state: absent
+      register: default_symlink
+
+    - name: Remove default-ssl.conf symlink
+      ansible.builtin.file:
+        path: /etc/apache2/sites-enabled/default-ssl.conf
+        state: absent
+      register: default_ssl_symlink
+
+    - name: Copy {{ env }} eieio.conf file
+      ansible.builtin.template:
+        src: eieio.conf.j2
+        dest: /etc/apache2/sites-available/eieio.conf
+        owner: root
+        group: root
+        mode: 0600
+      register: eieio_conf
+
+    - name: Set sites-enabled symlink
+      ansible.builtin.file:
+        src: /etc/apache2/sites-available/eieio.conf
+        dest: /etc/apache2/sites-enabled/eieio.conf
+        owner: root
+        group: root
+        state: link
+        follow: false
+        force: true
+      register: eieio_symlink
+
+    - name: Ensure apache is started and enabled on boot
+      ansible.builtin.service:
+        name: apache2
+        state: started
+        enabled: true
+
+    - name: Reload apache
+      ansible.builtin.service:
+        name: apache2
+        state: reloaded
+      when: ssl_files.changed or eieio_conf.changed or eieio_symlink.changed or default_symlink.changed or default_ssl_symlink.changed
+  become: true
+
+- name: Provision eieio proxy haproxy layer
+  block:
+    - name: Ensure HAProxy is installed.
+      ansible.builtin.package:
+        name: haproxy
+        state: present
+
+    - name: Get IP associated with ansible_fqdn
+      ansible.builtin.set_fact:
+        ansible_fqdn_ip: "{{ lookup('community.general.dig', ansible_fqdn) }}"
+
+    - name: Copy HAProxy configuration in place
+      ansible.builtin.template:
+        src: haproxy.cfg.j2
+        dest: /etc/haproxy/haproxy.cfg
+        owner: root
+        group: root
+        mode: 0644
+        validate: haproxy -f %s -c -q
+      register: haproxy_cfg
+
+    - name: Ensure HAProxy is started and enabled on boot
+      ansible.builtin.service:
+        name: haproxy
+        state: started
+        enabled: true
+
+    - name: Reload haproxy if haproxy.cfg changes
+      ansible.builtin.service:
+        name: haproxy
+        state: reloaded
+        enabled: true
+      when: haproxy_cfg.changed
+  become: true

@@ -1,0 +1,50 @@
+---
+
+- name: Ubuntu based installation of nginx
+  block:
+  - name: Install required nginx packages
+    ansible.builtin.apt:
+      name: nginx
+      install_recommends: false
+      update_cache: true
+
+  - name: Deploy standardized nginx.conf
+    ansible.builtin.copy:
+      src: nginx.conf
+      dest: /etc/nginx/
+      owner: root
+      group: root
+      mode: '0644'
+    register: nginx_conf
+
+  - name: Deploy standardized default sites-available conf
+    ansible.builtin.copy:
+      src: default
+      dest: /etc/nginx/sites-available/
+      owner: root
+      group: root
+      mode: '0644'
+    register: default_conf
+
+  - name: Make nginx ssl directory
+    ansible.builtin.file:
+      path: /etc/nginx/ssl
+      state: directory
+      owner: root
+      group: root
+      mode: '0600'
+
+  - name: Ensure nginx service is enabled and started
+    ansible.builtin.service:
+      name: nginx
+      enabled: true
+      state: started
+    register: nginx_service
+
+  - name: Reload nginx if config changes detected
+    ansible.builtin.service:
+      name: nginx
+      state: reloaded
+    when: default_conf.changed or nginx_conf.changed
+
+  become: true

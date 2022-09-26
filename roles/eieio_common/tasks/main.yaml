@@ -1,0 +1,22 @@
+---
+- name: EIEIO common system provisoining
+  block:
+    - name: Install commmon packages
+      ansible.builtin.apt:
+        name:
+          - tcpdump
+
+    - name: Non Production Provisioning
+      block:
+        - name: Update sssd.conf with development group
+          ansible.builtin.command: realm permit -g "corp.mutualink.net\Development"
+          changed_when: true
+
+        - name: Install development sudoers file
+          ansible.builtin.copy:
+            src: sudoers_development
+            dest: /etc/sudoers.d/development
+            owner: root
+            mode: 0440
+      when: ansible_hostname is search('qa-ig') or ansible_host is search('dev-ig')
+  become: true

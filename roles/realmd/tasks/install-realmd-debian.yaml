@@ -1,0 +1,19 @@
+---
+- name: Install Debian AD Domain packages
+  ansible.builtin.apt:
+    name:
+      - adcli
+      - packagekit
+      - realmd
+      - sssd
+      - sssd-tools
+      - libnss-sss
+      - libpam-sss
+      - krb5-user
+      - samba-common-bin
+      - oddjob
+      - oddjob-mkhomedir
+      - python3-pexpect
+    state: present
+    install_recommends: false
+    update_cache: true

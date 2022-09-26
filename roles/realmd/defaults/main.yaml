@@ -1,0 +1,4 @@
+domain: corp
+simple_allow_groups:
+  corp: corp.mutualink.net\Domain Admins, corp.mutualink.net\Infrastructure
+  mnet: mnet.mutualink.net\Domain Admins, mnet.mutualink.net\MNET Admins

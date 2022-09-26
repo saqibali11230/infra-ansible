@@ -1,0 +1,128 @@
+---
+- hosts: all
+  vars:
+    verify_stack_attempts: 20
+  become: true
+  tasks:
+    - name: LNK360 Install Phase
+      block:
+        - name: Create DevOps git directory
+          ansible.builtin.file:
+            path: /var/lib/git/devops
+            owner: root
+            group: root
+            state: directory
+            mode: '0755'
+
+        - name: Clone devops repo
+          ansible.builtin.git:
+            repo: 'https://git.corp.mutualink.net/edge/devops.git'
+            dest: /var/lib/git/devops
+            clone: true
+            version: "{{ git_source }}"
+
+        - name: Delete /var/tmp/secrets if it exists
+          ansible.builtin.file:
+            dest: /var/tmp/secrets
+            state: absent
+
+        - name: Check if lnk360 install secrets dir exists
+          ansible.builtin.stat:
+            path: /opt/lnk360/etc/secrets
+          register: secrets_dir
+
+        - name: Backup lnk360 install secrets if exists
+          ansible.builtin.command: cp -pPR /opt/lnk360/etc/secrets /var/tmp/
+          register: secrets_backup
+          when: secrets_dir.stat.exists
+
+        - name: Recursively delete lnk360 install
+          ansible.builtin.file:
+            path: /opt/lnk360
+            state: absent
+          when: secrets_dir.stat.exists
+
+        - name: Install the stack
+          ansible.builtin.command: /var/lib/git/devops/install.sh /var/lib/git/devops/environments/{{ env }}/{{ env }}.manifest
+          register: install_output
+
+        - name: Print install_output
+          ansible.builtin.debug:
+            var: install_output.stdout_lines
+
+    - name: LNK360 Deploy Phase
+      block:
+        - name: Check if secrets are backed up
+          ansible.builtin.stat:
+            path: /var/tmp/secrets/
+          register: tmp_secrets_backup
+
+        - name: Copy secrets if backed up
+          ansible.builtin.copy:
+            src: /var/tmp/secrets/
+            dest: /opt/lnk360/etc/secrets/
+            force: true
+            mode: '0700'
+            remote_src: true
+          when: tmp_secrets_backup.stat.exists
+
+        - name: Check if secrets are backed up
+          ansible.builtin.stat:
+            path: /var/tmp/secrets/gen/
+          register: tmp_secrets_gen_backup
+
+        - name: Copy secrets gen if backed up
+          ansible.builtin.copy:
+            src: /var/tmp/secrets/gen/
+            dest: /opt/lnk360/etc/secrets/gen/
+            force: true
+            mode: '0700'
+            remote_src: true
+          when: tmp_secrets_gen_backup.stat.exists
+
+        - name: Deploy the stack
+          ansible.builtin.command: /opt/lnk360/sbin/deploy-stack.sh --deploy
+          register: deploy_output
+
+        - name: Print deploy_output
+          ansible.builtin.debug:
+            var: deploy_output.stdout_lines
+
+        - name: Verify stack
+          ansible.builtin.command: /opt/lnk360/sbin/verify-stack.sh --verify
+          register: verify_output
+          until: verify_output.rc|int == 0
+          retries: '{{ verify_stack_attempts }}'
+          delay: 10
+          ignore_errors: true
+
+        - name: Print verify_output
+          ansible.builtin.debug:
+            var: verify_output.stdout
+
+        - name: Retry deployment
+          block:
+            - name: Deploy the stack again
+              ansible.builtin.command: /opt/lnk360/sbin/deploy-stack.sh --deploy
+              register: second_deploy_output
+
+            - name: Print deploy_output
+              ansible.builtin.debug:
+                var: second_deploy_output.stdout_lines
+
+            - name: Verify stack
+              ansible.builtin.command: /opt/lnk360/sbin/verify-stack.sh --verify
+              register: second_verify_output
+              until: second_verify_output.rc|int == 0
+              retries: '{{ verify_stack_attempts }}'
+              delay: 10
+
+            - name: Print verify_output
+              ansible.builtin.debug:
+                var: second_verify_output.stdout
+          when: verify_output.rc > 0
+
+        - name: Delete Deployer_Stack
+          ansible.builtin.command: docker stack rm Deployer
+          when: git_source != 'master'
+      when: secrets_backup.rc|int == 0

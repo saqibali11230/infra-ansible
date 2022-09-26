@@ -1,0 +1,42 @@
+---
+- hosts: all
+  vars:
+    framework: expressjs
+  become: true
+  tasks:
+    - name: Install Phase
+      block:
+        - name: Clear artifact directory contents
+          ansible.builtin.shell: 'rm -Rf /srv/{{ app_name }}/*'
+
+        - name: Unpack zip
+          ansible.builtin.unarchive:
+            src: https://nexus.corp.mutualink.net/repository/npm-releases/{{ app_name }}/-/{{ app_name }}-{{ version }}.tgz
+            dest: /srv/{{ app_name }}/
+            owner: '{{ app_name }}'
+            group: '{{ app_name }}'
+            mode: '0755'
+            remote_src: true
+            extra_opts: '--strip-components=1'
+            validate_certs: false
+
+        - name: install node modules
+          ansible.builtin.command: sudo -u {{ app_name }} npm install
+          args:
+            chdir: /srv/{{ app_name }}
+          register: npm_install
+          when: framework == 'nextjs'
+
+        - name: PM2 reload {{ app_name }}
+          ansible.builtin.shell: sudo -u {{ app_name }} pm2 reload {{ app_name }}
+
+        - name: PM2 stats reset for {{ app_name }}
+          ansible.builtin.shell: sudo -u {{ app_name }} pm2 reset {{ app_name }}
+
+        - name: Get PM2 Status for {{ app_name }}
+          ansible.builtin.shell: sudo -u {{ app_name }} pm2 status {{ app_name }}
+          register: pm2_results
+
+        - name: PM2 status output
+          ansible.builtin.debug:
+            var: pm2_results.stdout_lines

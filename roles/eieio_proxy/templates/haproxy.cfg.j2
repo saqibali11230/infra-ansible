@@ -1,0 +1,63 @@
+# {{ ansible_managed }}
+
+global
+    log         127.0.0.1 local2 {{ haproxy_config[env]['log_level'] }}
+
+    chroot      /var/lib/haproxy
+    pidfile     /var/run/haproxy.pid
+    maxconn     4000
+    user        haproxy
+    group       haproxy
+    daemon
+
+    stats socket /var/lib/haproxy/stats
+
+    tune.ssl.default-dh-param 2048
+
+defaults
+    mode                    http
+    log                     global
+    option                  httplog
+    option                  dontlognull
+    option http-server-close
+    option forwardfor       except 127.0.0.0/8
+    option                  redispatch
+    retries                 3
+    timeout http-request    30s
+    timeout queue           1m
+    timeout connect         5s
+    timeout client          3m
+    timeout server          3m
+    timeout http-keep-alive 10s
+    timeout check           5s
+    maxconn                 3000
+
+frontend eieio_management_api_internal
+    bind  {{ ansible_fqdn_ip }}:8884
+    default_backend  eieio_management_api
+
+frontend eieio_management_ui_internal
+    bind  {{ ansible_fqdn_ip }}:8885
+    default_backend  eieio_management_ui
+
+frontend eieio_esb_internal
+    bind  localhost:8080
+    default_backend  eieio_esb
+
+backend eieio_management_api
+    balance     roundrobin
+{% for ip in haproxy_config[env]['docker_hosts'] %}
+    server  api{{ loop.index }} {{ ip }}:8884 check
+{% endfor %}
+
+backend eieio_management_ui
+    balance     roundrobin
+{% for ip in haproxy_config[env]['docker_hosts'] %}
+    server  ui{{ loop.index }} {{ ip }}:8885 check
+{% endfor %}
+
+backend eieio_esb
+    balance     roundrobin
+{% for ip in haproxy_config[env]['docker_hosts'] %}
+    server  esb{{ loop.index }} {{ ip }}:8888 check
+{% endfor %}

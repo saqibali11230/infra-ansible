@@ -1,0 +1,22 @@
+---
+- name: "Disable Automatic Updates"
+  ansible.builtin.apt:
+    name: unattended-upgrades
+    state: absent
+    purge: true
+  become: true
+
+- name: "Update all packages to latest version"
+  ansible.builtin.apt:
+    upgrade: dist
+    update-cache: true
+  become: true
+
+- name: "Packages"
+  ansible.builtin.apt:
+    name:
+      # For web service
+      - nginx-full
+    install_recommends: false
+    update_cache: true
+  become: true

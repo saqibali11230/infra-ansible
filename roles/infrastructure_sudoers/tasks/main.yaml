@@ -1,0 +1,30 @@
+---
+- name: Install common sudoers files
+  block:
+    - name: Corp AD sudoers
+      block:
+        - name: Add domain admin sudoers
+          ansible.builtin.copy:
+            src: sudoers_domain-admins
+            dest: /etc/sudoers.d/domain-admins
+            owner: root
+            mode: 0440
+
+        - name: Add infrastructure sudoers
+          ansible.builtin.copy:
+            src: sudoers_infrastructure
+            dest: /etc/sudoers.d/infrastructure
+            owner: root
+            mode: 0440
+      when: domain == 'corp'
+
+    - name: MNET AD sudoers
+      block:
+        - name: Add domain admin sudoers
+          ansible.builtin.copy:
+            src: sudoers_administrators
+            dest: /etc/sudoers.d/administrators
+            owner: root
+            mode: 0440
+      when: domain == 'mnet'
+  become: true

@@ -1,0 +1,12 @@
+[Unit]
+Description=Start firewall
+#After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/activate-firewall
+RemainAfterExit=true
+StandardOutput=journal
+
+[Install]
+WantedBy=multi-user.target

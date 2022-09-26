@@ -1,0 +1,6 @@
+#!/bin/sh
+
+for SCRIPT in /etc/firewall.d/*
+do
+    $SCRIPT
+done

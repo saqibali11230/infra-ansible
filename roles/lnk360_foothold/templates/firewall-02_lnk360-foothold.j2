@@ -1,0 +1,84 @@
+#!/bin/sh
+
+I=iptables
+T=DOCKER-USER
+
+$I -N $T
+$I -F $T
+
+###### INGRESS RULES #####
+
+# Use state table for all RELATED and ESTABLISHED states
+iptables -A $T -i irapp -m state --state RELATED,ESTABLISHED -j ACCEPT
+
+# Support Ingress
+{% for subnet in firewall_subnets[mutualink_env]['support'] %}
+$I -A $T -s {{ subnet }} -i irapp -p tcp -m state --state NEW -m tcp --dport 9443 -j ACCEPT # portainer
+$I -A $T -s {{ subnet }} -i irapp -p tcp -m state --state NEW -m tcp --dport 8903 -j ACCEPT # irapp-media-proxy
+$I -A $T -s {{ subnet }} -i irapp -p tcp -m state --state NEW -m tcp --dport 8917 -j ACCEPT # irapp-mcp
+$I -A $T -s {{ subnet }} -i irapp -p tcp -m state --state NEW -m tcp --dport 8899 -j ACCEPT # media
+{% endfor %}
+
+# irapp Ingress
+{% for subnet in firewall_subnets[mutualink_env]['irapp'] %}
+$I -A $T -s {{ subnet }} -i irapp -p tcp -m state --state NEW -m tcp --dport 5060 -j ACCEPT # irapp-sip-mediation
+$I -A $T -s {{ subnet }} -i irapp -p tcp -m state --state NEW -m tcp --dport 50021 -j ACCEPT # irapp-file-server
+{% endfor %}
+
+# cloud Ingress
+{% for subnet in firewall_subnets[mutualink_env]['cloud'] %}
+$I -A $T -s {{ subnet }} -i irapp -p tcp -m state --state NEW -m tcp --dport 8080 -j ACCEPT # reverse-proxy for irapp-media-proxy, irapp-mcp, and media
+{% endfor %}
+
+# default ingress
+$I -A $T -i irapp -j DROP
+$I -A $T -i media -j DROP
+
+
+###### EGRESS RULES #####
+
+# Use state table for all RELATED and ESTABLISHED states
+$I -A OUTPUT -o irapp -m state --state RELATED,ESTABLISHED -j ACCEPT
+
+# Cloud Egress
+{% for subnet in firewall_subnets[mutualink_env]['cloud'] %}
+$I -A OUTPUT -d {{ subnet }} -o irapp -p udp -m state --state NEW -m udp --dport 6913 -j ACCEPT # irapp-orchestrator (per-patch msgs)
+$I -A OUTPUT -d {{ subnet }} -o irapp -p udp -m state --state NEW -m udp --dport 7900 -j ACCEPT # heartbeat (msgs)
+$I -A OUTPUT -d {{ subnet }} -o irapp -p udp -m state --state NEW -m udp --dport 7901 -j ACCEPT # metrics (msgs)
+$I -A OUTPUT -d {{ subnet }} -o irapp -p udp -m state --state NEW -m udp --dport 7913 -j ACCEPT # irapp-orchestrator (community msgs)
+$I -A OUTPUT -d {{ subnet }} -o irapp -p tcp -m state --state NEW -m tcp --dport 8892 -j ACCEPT # signaling
+$I -A OUTPUT -d {{ subnet }} -o irapp -p tcp -m state --state NEW -m tcp --dport 8895 -j ACCEPT # collaboration
+$I -A OUTPUT -d {{ subnet }} -o irapp -p tcp -m state --state NEW -m tcp --dport 15060 -j ACCEPT # irapp-sip-mediation
+$I -A OUTPUT -d {{ subnet }} -o irapp -p tcp -m state --state NEW -m tcp --dport 50021 -j ACCEPT # irapp-file-server
+{% endfor %}
+
+# Docker Egress
+{% for subnet in firewall_subnets[mutualink_env]['foothold'] %}
+$I -A OUTPUT -d {{ subnet }} -o irapp -p tcp -m state --state NEW -m tcp --dport 2377 -j ACCEPT
+$I -A OUTPUT -d {{ subnet }} -o irapp -p udp -m state --state NEW -m udp --dport 4789 -j ACCEPT
+$I -A OUTPUT -d {{ subnet }} -o irapp -p tcp -m state --state NEW -m tcp --dport 7946 -j ACCEPT
+$I -A OUTPUT -d {{ subnet }} -o irapp -p udp -m state --state NEW -m udp --dport 7946 -j ACCEPT
+{% endfor %}
+
+# Git server egress
+{% for subnet in firewall_subnets[mutualink_env]['git'] %}
+$I -A OUTPUT -d {{ subnet }} -o irapp -p tcp -m state --state NEW -m tcp --dport 22 -j ACCEPT
+$I -A OUTPUT -d {{ subnet }} -o irapp -p tcp -m state --state NEW -m tcp --dport 443 -j ACCEPT
+{% endfor %}
+
+# Docker registry server egress
+{% for subnet in firewall_subnets[mutualink_env]['docker_registry'] %}
+$I -A OUTPUT -d {{ subnet }} -o irapp -p tcp -m state --state NEW -m tcp --dport 443 -j ACCEPT
+{% endfor %}
+
+# SMTP server egress
+$I -A OUTPUT -o irapp -p tcp -m state --state NEW -m tcp --dport 25 -j ACCEPT
+$I -A OUTPUT -o irapp -p tcp -m state --state NEW -m tcp --dport 465 -j ACCEPT
+$I -A OUTPUT -o irapp -p tcp -m state --state NEW -m tcp --dport 587 -j ACCEPT
+
+# DNS egress
+$I -A OUTPUT -o irapp -p udp -m state --state NEW -m udp --dport 53 -j ACCEPT
+$I -A OUTPUT -o irapp -p tcp -m state --state NEW -m tcp --dport 53 -j ACCEPT
+
+# Default egress
+$I -A OUTPUT -o media -j DROP

@@ -1,0 +1,69 @@
+---
+- name: Provision the applabui host
+  block:
+    - name: Disable Automatic Updates
+      ansible.builtin.apt:
+        name: unattended-upgrades
+        state: absent
+        purge: true
+
+    - name: Upgrade all packages to latest version
+      ansible.builtin.apt:
+        upgrade: dist
+        update-cache: true
+      when: upgrade_packages | bool
+
+    - name: Create applab-ui directory
+      ansible.builtin.file:
+        path: /srv/applab-ui
+        owner: applab-ui
+        group: applab-ui
+        state: directory
+        mode: 0775
+
+    - name: Copy applab-ui sudoers file
+      ansible.builtin.copy:
+        src: applab-ui-sudoers
+        dest: /etc/sudoers.d/applab-ui
+        owner: root
+        group: root
+        mode: '0440'
+
+    - name: Deploy applab-ui nginx config for reverse proxy
+      ansible.builtin.template:
+        src: applab-ui-nginx.conf.j2
+        dest: /etc/nginx/sites-available/applab-ui.conf
+        owner: root
+        group: root
+        mode: '0644'
+      register: applabui_nginx
+
+    - name: Create a sites-enabled symbolic link
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/applab-ui.conf
+        dest: /etc/nginx/sites-enabled/applab-ui
+        owner: root
+        group: root
+        state: link
+        force: true
+      register: sites_enabled
+
+    - name: Reload nginx service
+      ansible.builtin.service:
+        name: nginx
+        enabled: true
+        state: reloaded
+      when: applabui_nginx.changed or sites_enabled.changed
+
+    - name: Reboot system
+      block:
+        - name: Rebooting system. Please stand by for results.
+          ansible.builtin.reboot:
+            search_paths: '/lib/molly-guard'
+          register: reboot_details
+
+        - name: Reboot results
+          ansible.builtin.debug:
+            var: reboot_details
+      when: reboot_system | bool
+  become: true

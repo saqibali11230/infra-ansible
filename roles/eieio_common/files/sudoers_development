@@ -1,0 +1,1 @@
+"%Development"    ALL=(ALL:ALL) NOPASSWD:/usr/sbin/tcpdump, /usr/bin/docker

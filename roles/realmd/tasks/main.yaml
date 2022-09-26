@@ -1,0 +1,64 @@
+---
+- name: Install OS Packages
+  block:
+  # - include_tasks: install-realmd-redhat.yaml
+  #   when: ansible_os_family == "RedHat"
+
+  - include_tasks: install-realmd-debian.yaml
+    when: ansible_os_family == "Debian"
+
+  # - include_tasks: install-realmd-windows.yaml
+  #   when: ansible_os_family == "Windows"
+  become: true
+
+- name: Provision realmd
+  block:
+  - name: Load secrets
+    ansible.builtin.include_vars:
+      file: realmd-creds.yaml
+
+  - name: Set hostname
+    ansible.builtin.hostname:
+      name: "{{ ansible_hostname }}"
+
+  - name: Checking to see if system is already joined to AD
+    ansible.builtin.command: realm list
+    changed_when: false
+    register: realm_list_results
+
+  - name: Join the realm
+    ansible.builtin.expect:
+      command: |
+        realm join {{ domain }}.mutualink.net -v
+        -U {{ realmd_join_user }}
+        --computer-name="{{ ansible_hostname }}"
+        --os-name="{{ ansible_os_family }}"
+        --os-version="{{ ansible_distribution_version }}"
+      responses:
+        (?i)Password: "{{ realmd_join_password[domain] }}"
+    no_log: true
+    failed_when: false
+    when: realm_list_results.stdout | length < 1 or realm_list_results.stdout_lines[0] is not search(domain)
+
+  - name: Copy SSSD config
+    ansible.builtin.template:
+      src: sssd.conf.j2
+      dest: /etc/sssd/sssd.conf
+      mode: 0600
+    register: sssd_config
+
+  - name: Restart SSSD
+    ansible.builtin.service:
+      name: sssd
+      state: restarted
+    register: sssd_service
+    when: sssd_config.changed
+
+  - name: Copy pam common-session file
+    ansible.builtin.copy:
+      src: common-session
+      dest: /etc/pam.d/
+      owner: root
+      group: root
+      mode: '0644'
+  become: true

@@ -1,0 +1,56 @@
+---
+all:
+  hosts:
+  children:
+    qa_eieio_app:
+      hosts:
+        wfr-qa-ig-01: {env: 'qa'}
+        wfr-qa-ig-02: {env: 'qa'}
+        wfr-qa-ig-03: {env: 'qa'}
+        wfr-qa-ig-04: {env: 'qa'}
+    qa_eieio_db:
+      hosts:
+        wfr-qa-ig-db: {env: 'qa'}
+    qa_eieio_proxy:
+      hosts:
+        wfr-qa-ig-p: {env: 'qa'}
+    qa_lnk360_onprem:
+      hosts:
+        wfr-dev-fema-2:
+    qa0_foothold:
+      hosts:
+        wfr-dev-foothold-1:
+        wfr-dev-foothold-2:
+    qa0_lnk360_foothold_target:
+      hosts:
+        wfr-dev-foothold-1:
+    qa0_lnk360_ec2:
+      hosts:
+        172.31.0.10:  # ec2 docker swarm manager for lnk360 deployments
+    qa0_lnk360_aws_target:
+      hosts:
+        172.31.0.10:  # ec2 docker swarm manager for lnk360 deployments
+    qa1_foothold:
+      hosts:
+        wfr-qa-foothold-01:
+        wfr-qa-foothold-02:
+        wfr-qa-foothold-03:
+    qa1_lnk360_foothold_target:
+      hosts:
+        wfr-qa-foothold-01:
+    qa1_lnk360_ec2:
+      hosts:
+        172.20.10.14:  # ec2 docker swarm manager for lnk360 deployments
+    qa1_lnk360_aws_target:
+      hosts:
+        172.20.10.14:  # ec2 docker swarm manager for lnk360 deployments
+    qa:
+      children:
+        qa0_foothold:
+        qa0_lnk360_ec2:
+        qa1_foothold:
+        qa1_lnk360_ec2:
+        qa_lnk360_onprem:
+        qa_eieio_app:
+        qa_eieio_db:
+        qa_eieio_proxy:

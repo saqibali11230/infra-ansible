@@ -1,0 +1,4 @@
+domain: corp
+admin_group:
+  corp: Infrastructure
+  mnet: MNET Admins

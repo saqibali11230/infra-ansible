@@ -1,0 +1,4 @@
+---
+dependencies:
+  - {role: nginx, tag: rundeck}
+  - {role: certs, tag: rundeck}

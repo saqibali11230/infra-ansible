@@ -1,0 +1,52 @@
+description: Standard QA project level access control.
+context:
+  project: 'QA'
+for:
+  resource:
+    - equals:
+        kind: job
+      allow: [read] # allow read of all jobs
+    - equals:
+        kind: node
+      allow: [read] # allow refresh node sources
+    - equals:
+        kind: event
+      allow: [read] # allow read/read events
+  adhoc:
+    - allow: [read] # allow read adhoc jobs
+  job:
+    - allow: [read, run, kill] # allow read/run/kill of all jobs
+  node:
+    - allow: [read, run] # allow read/run for nodes
+by:
+  group: Quality Assurance
+ 
+---
+ 
+description: Application level access control for the Development role
+context:
+  application: 'rundeck'
+for:
+  resource:
+    - equals:
+        kind: project
+      allow: [read] # allow read of projects
+    - equals:
+        kind: system
+      allow: [read] # allow read executions
+    - equals:
+        kind: system_acl
+      allow: [read] # allow reading system ACL files
+  project:
+    - match:
+        name: QA
+      allow: [read] # allow read access of all projects or use 'admin'
+  project_acl:
+    - match:
+        name: '.*'
+      allow: [read] # allow reading project-specific ACL files
+  storage:
+    - allow: [read] # allow read access for /ssh-key/* storage content
+ 
+by:
+  group: Quality Assurance

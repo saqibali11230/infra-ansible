@@ -1,0 +1,21 @@
+server {
+    listen       443 ssl;
+    server_name  localhost {{ ansible_hostname }} {{ ansible_hostname }}.corp.mutualink.net applab.corp.mutualink.net;
+
+    ssl_certificate      /etc/nginx/ssl/corp.mutualink.net.crt;
+    ssl_certificate_key  /etc/nginx/ssl/corp.mutualink.net.key;
+
+    ssl_session_cache    shared:SSL:1m;
+    ssl_session_timeout  5m;
+
+    ssl_ciphers  HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers  on;
+
+    location / {
+        proxy_pass         http://localhost:3000;
+    }
+
+    location /api {
+        proxy_pass         https://applab-api.corp.mutualink.net;
+    }
+}

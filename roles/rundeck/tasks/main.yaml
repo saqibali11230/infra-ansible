@@ -1,0 +1,131 @@
+---
+
+- name: Ubuntu based installation of Rundeck CE
+  block:
+    - name: Load secrets
+      ansible.builtin.include_vars:
+        file: secrets.yaml
+
+    - name: Copy rundeck sudoers
+      ansible.builtin.copy:
+        src: sudoers_rundeck
+        dest: /etc/sudoers.d/rundeck
+        owner: root
+        group: root
+        mode: 0440
+
+    - name: Import Rundeck repo signing key
+      ansible.builtin.shell: curl -L https://packages.rundeck.com/pagerduty/rundeck/gpgkey | apt-key add - # noqa command-instead-of-module
+      register: rundeck_apt_key_add
+      changed_when: rundeck_apt_key_add.rc == 0
+      failed_when: rundeck_apt_key_add.rc > 0
+
+    - name: Deploy rundeck.list of related validated packages
+      ansible.builtin.copy:
+        src: rundeck.list
+        dest: /etc/apt/sources.list.d/rundeck.list
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Install the packagecloud APT repo for rundeck cli tool
+      ansible.builtin.shell: curl -s https://packagecloud.io/install/repositories/pagerduty/rundeck/script.deb.sh | os=any dist=any bash -
+      register: rundeck_cli_apt_key_add
+      changed_when: rundeck_cli_apt_key_add.rc == 0
+      failed_when: rundeck_cli_apt_key_add.rc > 0
+      # noqa command-instead-of-module
+
+    - name: Install required Rundeck ubuntu packages
+      ansible.builtin.apt:
+        name:
+          - openjdk-11-jre-headless
+          - rundeck
+          - rundeck-cli
+        install_recommends: false
+        update_cache: true
+
+    - name: Copy Rundeck config templates
+      ansible.builtin.template:
+        src: '{{ item }}.j2'
+        dest: /etc/rundeck/{{ item }}
+        owner: rundeck
+        group: rundeck
+        mode: '0640'
+      loop:
+        # - rundeck-config.properties
+        # - framework.properties
+        - jaas-activedirectory.conf
+        - administrators.aclpolicy
+      register: dynamic_config
+
+    - name: Replace lines in rundeck configs that can't be templated
+      ansible.builtin.replace:
+        path: '{{ item.path }}'
+        regexp: '{{ item.regexp }}'
+        replace: '{{ item.replace }}'
+      loop:
+        - {path: /etc/rundeck/rundeck-config.properties,
+           regexp: '^grails.serverURL=http://localhost:4440',
+           replace: 'grails.serverURL=https://rundeck.{{ domain }}.mutualink.net'}
+        - {path: /etc/rundeck/framework.properties,
+           regexp: '^framework.server.name = localhost',
+           replace: 'framework.server.name = rundeck.{{ domain }}.mutualink.net'}
+        - {path: /etc/rundeck/framework.properties,
+           regexp: '^framework.server.hostname = localhost',
+           replace: 'framework.server.hostname = rundeck.{{ domain }}.mutualink.net'}
+        - {path: /etc/rundeck/framework.properties,
+           regexp: '^framework.server.url = http://localhost:4440',
+           replace: 'framework.server.url = https://rundeck.{{ domain }}.mutualink.net'}
+
+    - name: Copy rundeck config files
+      ansible.builtin.copy:
+        src: '{{ item }}'
+        dest: /etc/rundeck/{{ item }}
+        owner: rundeck
+        group: rundeck
+        mode: '0640'
+      loop:
+        - profile
+        - development.aclpolicy
+        - qa.aclpolicy
+      register: static_config
+
+    - name: Ensure Rundeck service is enabled and started
+      ansible.builtin.service:
+        name: rundeckd
+        enabled: true
+        state: started
+      register: rundeckd_service
+
+    - name: Restart Rundeck service if config change detected
+      ansible.builtin.service:
+        name: rundeckd
+        state: restarted
+      when: static_config.changed or dynamic_config.changed
+
+    - name: Deploy Rundeck nginx config for reverse proxy
+      ansible.builtin.template:
+        src: rundeck-nginx.conf.j2
+        dest: /etc/nginx/sites-available/rundeck.conf
+        owner: root
+        group: root
+        mode: '0644'
+      register: rundeck_nginx
+
+    - name: Create a sites-enabled symbolic link
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/rundeck.conf
+        dest: /etc/nginx/sites-enabled/rundeck
+        owner: root
+        group: root
+        state: link
+        force: true
+      register: sites_enabled
+
+    - name: Reload nginx service
+      ansible.builtin.service:
+        name: nginx
+        enabled: true
+        state: reloaded
+      when: rundeck_nginx.changed or sites_enabled.changed
+  become: true

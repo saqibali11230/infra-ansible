@@ -1,0 +1,59 @@
+---
+- name: Provision Ansible system
+  block:
+    - name: Install Ubuntu Packages
+      ansible.builtin.apt:
+        name:
+          - software-properties-common
+          - git
+          - python3-pip
+        install_recommends: false
+        update_cache: true
+
+    - name: Install Ansible
+      ansible.builtin.pip:
+        name: ansible
+        version: '{{ ansible_version }}'
+
+    - name: Create ansible-infrastructure git directory
+      ansible.builtin.file:
+        path: /var/lib/git/ansible-infrastructure
+        owner: root
+        group: root
+        state: directory
+        mode: '0755'
+
+    - name: Copy ansible_key file
+      ansible.builtin.copy:
+        src: ansible_key
+        dest: /var/www/html/ansible_key
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: Deploy ansible nginx config for serving static content
+      ansible.builtin.template:
+        src: ansible-nginx.conf.j2
+        dest: /etc/nginx/sites-available/ansible.conf
+        owner: root
+        group: root
+        mode: 0644
+      register: ansible_nginx
+
+    - name: Create a sites-enabled symbolic link
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/ansible.conf
+        dest: /etc/nginx/sites-enabled/ansible
+        owner: root
+        group: root
+        state: link
+        force: true
+      register: sites_enabled
+
+    - name: Reload nginx service
+      ansible.builtin.service:
+        name: nginx
+        enabled: true
+        state: reloaded
+      when: ansible_nginx.changed or sites_enabled.changed
+  become: true

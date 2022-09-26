@@ -1,0 +1,22 @@
+variables:
+  BUILD_IMAGE_WITH_TAG: "nexus.corp.mutualink.net:5000/ubuntu-ansible-base:0.0.2"
+
+stages:
+  - ansible-lint
+  - git-sync
+
+ansible-lint:
+  stage: ansible-lint
+  image: ${BUILD_IMAGE_WITH_TAG}
+  before_script:
+    - python3 --version
+    - pip3 list | grep ansible
+  script:
+    - ansible-lint
+
+git-sync:
+  stage: git-sync
+  script: curl -X POST -k https://rundeck.corp.mutualink.net/api/41/webhook/hddmAMa09Xs18jJb2k1Prr7I19qpifhd#ansible-git-sync
+  only:
+    - main
+

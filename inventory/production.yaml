@@ -1,0 +1,21 @@
+---
+all:
+  hosts:
+    # Initial configuration
+    bootstrap:
+      ansible_host: localhost
+      ansible_connection: local
+
+    # Richardson Primary ISSI
+    rin-is-adm-01:
+    rin-is-issi-01:
+    rin-is-mlgw-01:
+
+    # Automation
+    wfr-auto-ansible-1:
+    wfr-inf-applabui-1:
+    wfr-inf-applabapi-1:
+  children:
+    bos_pos:  # production one-off solution
+      hosts:
+        bos-pos-1: {domain: mnet, env: prod}  # bos-pos-1. prod lnk360 push button deployment

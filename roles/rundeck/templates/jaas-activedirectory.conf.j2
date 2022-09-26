@@ -1,0 +1,21 @@
+activedirectory {
+    com.dtolabs.rundeck.jetty.jaas.JettyCachingLdapLoginModule required
+    debug="true"
+    contextFactory="com.sun.jndi.ldap.LdapCtxFactory"
+    providerUrl="ldap://{{ domain }}.mutualink.net:389"
+    bindDn="CN=realmd-join,OU=Service Accounts,DC={{ domain }},DC=mutualink,DC=net"
+    bindPassword="{{ rundeck_ad_bind_password[domain] }}"
+    authenticationMethod="simple"
+    forceBindingLogin="true"
+    userBaseDn="DC={{ domain }},DC=mutualink,DC=net"
+    userRdnAttribute="sAMAccountName"
+    userIdAttribute="sAMAccountName"
+    userPasswordAttribute="unicodePwd"
+    userObjectClass="user"
+    roleBaseDn="OU=Groups,DC={{ domain }},DC=mutualink,DC=net"
+    roleNameAttribute="cn"
+    roleMemberAttribute="member"
+    roleObjectClass="group"
+    cacheDurationMillis="300000"
+    reportStatistics="true";
+};

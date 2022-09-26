@@ -1,0 +1,2 @@
+ssl_cert_path: /etc/nginx/ssl
+domain: corp

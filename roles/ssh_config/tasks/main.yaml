@@ -1,0 +1,34 @@
+---
+- name: Provision ssh for all ansible users
+  block:
+    - name: Create authorized user ssh key directory
+      ansible.builtin.file:
+        path: /etc/ssh/authorized_keys
+        state: directory
+        owner: root
+        group: root
+        mode: 0755
+
+    - name: Upload user key
+      ansible.builtin.copy:
+        src: files/authorized_keys/
+        dest: /etc/ssh/authorized_keys/
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: Configure sshd_config global directory for authorized keys
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^AuthorizedKeysFile'
+        line: 'AuthorizedKeysFile /etc/ssh/authorized_keys/%u /root/.ssh/authorized_keys'
+        state: present
+        validate: '/usr/sbin/sshd -T -f %s'
+      register: ssh_authkeyfile
+
+    - name: "Restart SSHD on config change"
+      when: ssh_authkeyfile.changed
+      ansible.builtin.service:
+        name: sshd
+        state: restarted
+  become: true

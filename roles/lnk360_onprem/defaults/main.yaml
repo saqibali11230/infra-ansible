@@ -1,0 +1,3 @@
+lego_domain:
+  dev: 'dev360'
+  qa: 'onprem360'

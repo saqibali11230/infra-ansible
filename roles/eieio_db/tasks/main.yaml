@@ -1,0 +1,55 @@
+---
+- name: Provision eieio db cron jobs
+  block:
+    - name: Create backups directory
+      ansible.builtin.file:
+        path: /backups
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Create eieio maintenance directory
+      ansible.builtin.file:
+        path: /opt/mutualink/eieio/maintenance
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Create management-db-backup.cnf file
+      ansible.builtin.template:
+        src: management-db-backup.cnf.j2
+        dest: /opt/mutualink/eieio/maintenance/management-db-backup.cnf
+        owner: root
+        group: root
+        mode: '0600'
+
+    - name: Create logs-db-archive.cnf file
+      ansible.builtin.template:
+        src: logs-db-archive.cnf.j2
+        dest: /opt/mutualink/eieio/maintenance/logs-db-archive.cnf
+        owner: root
+        group: root
+        mode: '0600'
+
+    - name: Create management-db-backup cron symlink
+      ansible.builtin.file:
+        src: /opt/mutualink/eieio/maintenance/cron/eieio-management-db-backup-cron
+        dest: /etc/cron.daily/eieio-management-db-backup-cron
+        owner: root
+        group: root
+        state: link
+        follow: false
+        force: true
+
+    - name: Create logs-db-archive cron symlink
+      ansible.builtin.file:
+        src: /opt/mutualink/eieio/maintenance/cron/eieio-logs-db-archive-cron
+        dest: /etc/cron.daily/eieio-logs-db-archive-cron
+        owner: root
+        group: root
+        state: link
+        follow: false
+        force: true
+  become: true

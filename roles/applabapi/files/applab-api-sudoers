@@ -1,0 +1,1 @@
+applab-api        ALL=(ALL:ALL) NOPASSWD:/bin/systemctl reload nginx

@@ -1,0 +1,40 @@
+# env vars
+apache_config:
+  dev:
+    main_log_level: 'debug'
+    ssl_log_level: 'debug'
+    public_fqdn: 'wfr-dev-ig-p.corp.mutualink.net'
+    auth_ldap_url: 'ldaps://ma.corp.mutualink.net:636/dc=corp,dc=mutualink,dc=net?sAMAccountName?sub?(objectClass=user)'
+    auth_ldap_bind_dn: 'CN=relengldap,OU=Service Accounts,DC=corp,DC=mutualink,DC=net'
+    ldap_group: 'CN=Development EIEIO API Keys,OU=Groups,DC=corp,DC=mutualink,DC=net'
+    required_cidrs: []
+  qa:
+    main_log_level: 'debug'
+    ssl_log_level: 'debug'
+    public_fqdn: 'eieio.qa.mutualink.net'
+    auth_ldap_url: 'ldaps://ma.corp.mutualink.net:636/dc=corp,dc=mutualink,dc=net?sAMAccountName?sub?(objectClass=user)'
+    auth_ldap_bind_dn: 'CN=relengldap,OU=Service Accounts,DC=corp,DC=mutualink,DC=net'
+    ldap_group: 'CN=Quality Assurance EIEIO API Keys,OU=Groups,DC=corp,DC=mutualink,DC=net'
+    required_cidrs:
+      - 205.237.106.1/32 # Rave
+      - 205.237.106.2/32 # Rave
+      - 205.237.106.3/32 # Rave
+  prod:
+    main_log_level: 'info'
+    ssl_log_level: 'warn'
+    public_fqdn: 'eieio.mutualink.net'
+    auth_ldap_url: 'ldaps://mnet.mutualink.net:636/dc=mnet,dc=mutualink,dc=net?sAMAccountName?sub?(objectClass=user)'
+    auth_ldap_bind_dn: 'CN=EIEIOLDAP,OU=Service Accounts,OU=Admin,DC=mnet,DC=mutualink,DC=net'
+    ldap_group: 'CN=Production EIEIO API Keys,OU=Groups,DC=mnet,DC=mutualink,DC=net'
+    required_cidrs:
+      - 69.25.199.33/32 # Rave
+      - 75.98.95.161/32 # Rave
+  intlab:
+    main_log_level: 'debug'
+    ssl_log_level: 'debug'
+    public_fqdn: 'eieio.int.mutualink.net'
+    auth_ldap_url: 'ldaps://ma.corp.mutualink.net:636/dc=corp,dc=mutualink,dc=net?sAMAccountName?sub?(objectClass=user)'
+    auth_ldap_bind_dn: 'CN=intldap,OU=Service Accounts,DC=corp,DC=mutualink,DC=net'
+    ldap_group: 'CN=Integration Lab EIEIO API Keys,OU=Groups,DC=corp,DC=mutualink,DC=net'
+    required_cidrs:
+      - 50.235.239.50/32 # Rave

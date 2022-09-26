@@ -1,0 +1,12 @@
+---
+all:
+  hosts:
+  children:
+    sc_foothold:
+      hosts:
+        wfr-sc-foothold-01:
+        wfr-sc-foothold-02:
+        wfr-sc-foothold-03:
+    sc:
+      children:
+        sc_foothold:

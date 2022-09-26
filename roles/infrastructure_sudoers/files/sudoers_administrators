@@ -1,0 +1,2 @@
+"%Domain Admins"      ALL=(ALL:ALL) ALL
+"%MNET Admins"        ALL=(ALL:ALL) NOPASSWD: ALL

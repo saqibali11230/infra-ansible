@@ -1,0 +1,5 @@
+---
+dependencies:
+  - {role: common, tag: eieio_db}
+  - {role: eieio_common, tag: eieio_db}
+  - {role: docker_ce, tag: eieio_db, vars: {docker_ce_version: '5:20.10.17~3-0~ubuntu-bionic', containerd_version: 1.6.6-1, ubuntu_distro: bionic}}

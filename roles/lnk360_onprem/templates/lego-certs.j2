@@ -1,0 +1,30 @@
+#!/bin/bash
+# This script creates/renews lego certs for the lnk360 platform and restart nginx containers that serve it
+set -e -o pipefail
+shopt -s inherit_errexit
+
+zerossl_email=security@mutualink.net
+domain="-d lnk360.{{ lego_domain[env] }}.mutualink.net -d sip.{{ lego_domain[env] }}.mutualink.net -d meii.{{ lego_domain[env] }}.mutualink.net"
+EAB_CREDS=$(curl -s https://api.zerossl.com/acme/eab-credentials-email --data "email=$zerossl_email" | jq -caM .)
+
+if jq -r ".success"      <<<"$EAB_CREDS" | grep -E '[^true]'
+  then echo "unexpected characters in EAB_CREDS.success"; exit 1; fi
+
+if jq -r ".eab_kid"      <<<"$EAB_CREDS" | grep -E '[^A-Za-z0-9_-]'
+  then echo "unexpected characters in EAB_CREDS.eab_kid"; exit 1; fi
+
+if jq -r ".eab_hmac_key" <<<"$EAB_CREDS" | grep -E '[^A-Za-z0-9_-]'
+  then echo "unexpected characters in EAB_CREDS.hmac_key"; exit 1; fi
+
+EAB_KID=$(jq -r ".eab_kid" <<<"$EAB_CREDS")
+EAB_HMAC_Key=$(jq -r ".eab_hmac_key" <<<"$EAB_CREDS")
+LEGO_EAB="--eab --kid $EAB_KID --hmac $EAB_HMAC_Key"
+LEGO_PATH="/opt/ssl/lego"
+LEGO_OPTS="--http -a $domain -m $zerossl_email -s https://acme.zerossl.com/v2/DV90 --path $LEGO_PATH --cert.timeout 600"
+set -x
+lego $LEGO_OPTS $LEGO_EAB run
+
+# restart nginx container to pickup new certs if it exists
+if [[ -n "$(docker service ls --filter name={{ lego_domain[env] }}_www-lb --quiet)" ]]; then
+  docker service update --force {{ lego_domain[env] }}_www-lb
+fi

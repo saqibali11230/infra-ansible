@@ -1,0 +1,4 @@
+---
+dependencies:
+  - {role: common, tag: eieio_proxy}
+  - {role: eieio_common, tag: eieio_proxy}

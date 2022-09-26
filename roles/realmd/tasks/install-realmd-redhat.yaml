@@ -1,0 +1,16 @@
+---
+- name: Install RedHat AD Domain packages
+  ansible.builtin.yum:
+    name:
+      - adcli
+      - packagekit
+      - realmd
+      - sssd
+      - sssd-tools
+      - libnss-sss
+      - libpam-sss
+      - samba-common-bin
+      - oddjob
+      - oddjob-mkhomedir
+    state: present
+    update_cache: true

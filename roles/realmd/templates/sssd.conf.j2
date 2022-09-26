@@ -1,0 +1,21 @@
+# {{ ansible_managed }}
+[sssd]
+domains = {{ domain }}.mutualink.net
+config_file_version = 2
+services = nss, pam
+
+[domain/{{ domain }}.mutualink.net]
+ad_domain = {{ domain }}.mutualink.net
+krb5_realm = {{ domain|upper }}.MUTUALINK.NET
+realmd_tags = manages-system joined-with-adcli
+cache_credentials = True
+id_provider = ad
+krb5_store_password_if_offline = True
+default_shell = /bin/bash
+ldap_sasl_authid = {{ ansible_hostname }}$
+ldap_id_mapping = True
+use_fully_qualified_names = False
+fallback_homedir = /home/%u@%d
+access_provider = simple
+simple_allow_groups = {{ simple_allow_groups[domain] }}
+simple_allow_users = $

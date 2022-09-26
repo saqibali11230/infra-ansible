@@ -1,0 +1,5 @@
+---
+dependencies:
+  - {role: common, tag: applabapi}
+  - {role: nodejs_app, tags: applabapi}
+  - {role: certs, tag: applabapi}

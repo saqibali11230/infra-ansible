@@ -1,0 +1,53 @@
+---
+# ISSI Hosts
+# (These are currently separate, but MAY be combined later
+# if the roles don't need to be separate.)
+- hosts: "~^(wfr|rin)-is-"
+  roles:
+    - issi_common
+- hosts: "~^(wfr|rin)-is-adm-"
+  roles:
+    - issi_adm
+# - hosts: "~^(wfr|rin)-is-issi-"
+#   roles:
+#     - issi_issi
+# - hosts: "~^(wfr|rin)-is-mlgw-"
+#   roles:
+#     - issi_mlgw
+
+# LNK360 Hosts
+- hosts: "*-foothold-*"
+  roles:
+    - lnk360_foothold
+
+- hosts: "*-fema-*"
+  roles:
+    - lnk360_onprem
+
+- hosts: "*-ansible-*"
+  roles:
+    - ansible
+
+- hosts: "*-applabui-*"
+  roles:
+    - applabui
+
+- hosts: "*-applabapi-*"
+  roles:
+    - applabapi
+
+- hosts: "*-ig-p"
+  roles:
+    - eieio_proxy
+
+- hosts: "*-ig-db"
+  roles:
+    - eieio_db
+
+- hosts: "~^.*-ig-[0-9]+$"
+  roles:
+    - eieio_app
+
+- hosts: "bos_pos"  # short term solution
+  roles:
+    - ansible

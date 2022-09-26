@@ -1,0 +1,77 @@
+---
+# "ansible_os_family": "RedHat"
+
+- name: "ISSI Packages for Ubuntu"
+  when: "ansible_os_family == 'Ubuntu'"
+  block:
+    - name: "Disable Automatic Updates"
+      ansible.builtin.apt:
+        name: unattended-upgrades
+        state: absent
+        purge: true
+      become: true
+
+    - name: "Update all packages to latest version"
+      ansible.builtin.apt:
+        upgrade: dist
+        update-cache: true
+      become: true
+
+    - name: "Packages"
+      ansible.builtin.apt:
+        name:
+          # Update netplan to be able to use default route directive
+          - netplan.io
+          - openssh-server
+          - realmd
+          - sssd-tools
+          - sssd
+          - libnss-sss
+          - libpam-sss
+          - adcli
+          - packagekit
+          # For system configuration/compliance
+          - ansible
+          # For time synchronization
+          - ntp
+          # For software installation
+          - git
+          - gnupg
+          - curl
+          # For user interaction
+          - vim
+          - htop
+          # For safety
+          - molly-guard
+        install_recommends: "no"
+        update_cache: true
+      become: true
+
+- name: "ISSI Packages for RedHat"
+  when: "ansible_os_family == 'RedHat'"
+  block:
+    - name: "Upgrade all packages"
+      ansible.builtin.yum:
+        name: '*'
+        state: latest
+    - name: "Packages needed for ISSI"
+      ansible.builtin.yum:
+        name:
+          - openssh-server
+          - realmd
+          - oddjob
+          - oddjob-mkhomedir
+          - sssd
+          - adcli
+          - samba-common-tools
+          # For time synchronization
+          - ntp
+          # For software installation
+          - git
+          - gnupg
+          - curl
+          # For user interaction
+          - vim
+        state: present
+        update_cache: true
+      become: true

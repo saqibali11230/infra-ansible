@@ -1,0 +1,24 @@
+---
+all:
+  hosts:
+  children:
+    dev_lnk360_onprem:
+      hosts:
+        wfr-dev-fema-3:
+    dev_eieio_app:
+      hosts:
+        wfr-dev-ig-01: {env: 'dev'}
+        wfr-dev-ig-02: {env: 'dev'}
+        wfr-dev-ig-03: {env: 'dev'}
+    dev_eieio_db:
+      hosts:
+        wfr-dev-ig-db: {env: 'dev'}
+    dev_eieio_proxy:
+      hosts:
+        wfr-dev-ig-p: {env: 'dev'}
+    dev:
+      children:
+        dev_lnk360_onprem:
+        dev_eieio_app:
+        dev_eieio_db:
+        dev_eieio_proxy:

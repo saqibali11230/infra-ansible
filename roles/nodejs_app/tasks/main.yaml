@@ -1,0 +1,30 @@
+---
+- name: Provision a nodejs app server
+  block:
+
+  - name: Add NodeSource PPA
+    ansible.builtin.shell: curl -fsSL https://deb.nodesource.com/setup_16.x | bash -  # noqa command-instead-of-module
+    register: nodesource_apt_key_add
+    changed_when: nodesource_apt_key_add.rc == 0
+    failed_when: nodesource_apt_key_add.rc > 0
+
+  - name: Install Nodejs debian package
+    ansible.builtin.apt:
+      name:
+        - nodejs
+      install_recommends: false
+      update_cache: true
+
+  - name: Check if PM2 is installed
+    ansible.builtin.command: pm2 --version
+    register: pm2_version_results
+    changed_when: false
+    ignore_errors: true
+
+  - name: Install PM2
+    ansible.builtin.command: npm install pm2@{{ pm2_default_version }} -g  # noqa command-instead-of-module
+    register: pm2_install
+    changed_when: pm2_install.rc == 0
+    when: pm2_version_results.stdout != pm2_default_version
+
+  become: true

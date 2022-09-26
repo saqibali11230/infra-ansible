@@ -1,0 +1,38 @@
+# {{ ansible_managed }}
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    eports:
+      match:
+        name: eno*
+      optional: true
+  bonds:
+    bond0:
+      interfaces: [eports]
+      parameters:
+        mode: 802.3ad
+        lacp-rate: fast
+        mii-monitor-interval: 100
+  vlans:
+    irapp:
+      id: {{ netplan[mutualink_env]['irapp']['id'] }}
+      link: bond0
+      addresses: [{{ irapp_ip_address }}]
+      gateway4: {{ netplan[mutualink_env]['irapp']['gateway4'] }}
+      nameservers:
+        search:
+{% for domain in netplan[mutualink_env]['irapp']['nameservers_search'] %}
+          - {{ domain }}
+{% endfor %}
+        addresses:
+{% for address in netplan[mutualink_env]['irapp']['nameservers_addresses'] %}
+          - {{ address }}
+{% endfor %}
+    media:
+      id: {{ netplan[mutualink_env]['media']['id'] }}
+      link: bond0
+    mediaproxy:
+      id: {{ netplan[mutualink_env]['mediaproxy']['id'] }} 
+      link: bond0
+

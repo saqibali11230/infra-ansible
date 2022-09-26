@@ -1,0 +1,12 @@
+all:
+  hosts:
+  children:
+    test_ubuntu:
+      hosts:
+        192.168.27.41: # WFD-AUTO-TEST-UBU
+    test_centos6:
+      hosts:
+        192.168.27.40: # WFD-AUTO-TEST-CEN
+    test_windows:
+      hosts:
+        192.168.27.42: # WFD-AUTO-TEST-WIN

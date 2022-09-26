@@ -1,0 +1,4 @@
+---
+dependencies:
+  - {role: common, tag: lnk360_foothold}
+  - {role: docker_ce, tag: lnk360_foothold, vars: {docker_ce_version: '5:20.10.16~3-0~ubuntu-bionic', containerd_version: 1.6.4-1, ubuntu_distro: bionic}}

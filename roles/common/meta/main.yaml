@@ -1,0 +1,5 @@
+---
+dependencies:
+  - {role: realmd, tag: common}
+  - {role: infrastructure_sudoers, tag: common}
+  - {role: ssh_config, tag: common}

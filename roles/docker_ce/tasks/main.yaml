@@ -1,0 +1,52 @@
+---
+- name: Install Docker CE | Add Docker APT signing key
+  ansible.builtin.apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+  become: true
+
+- name: Install Docker CE | Add Docker APT repository
+  ansible.builtin.apt_repository:
+    repo: deb https://download.docker.com/linux/ubuntu {{ ubuntu_distro }} stable
+    state: present
+    mode: 0644
+  become: true
+
+- name: Install Docker CE | Create Docker config directory
+  ansible.builtin.file:
+    path: /etc/docker
+    state: directory
+    mode: 0755
+  become: true
+
+- name: Install Docker CE | Create Docker network configuration
+  ansible.builtin.copy:
+    src: daemon.json
+    dest: /etc/docker/daemon.json
+    mode: 0644
+  become: true
+
+- name: Install Docker CE | Add Docker APT package
+  ansible.builtin.apt:
+    name:
+      - docker-ce={{ docker_ce_version }}
+      - docker-ce-cli={{ docker_ce_version }}
+      - containerd.io={{ containerd_version }}
+    state: present
+    update_cache: true
+  become: true
+
+- name: Install Docker CE | Check if prevent Docker upgrade is enabled
+  ansible.builtin.shell:
+    cmd: apt-mark showhold | grep -cFx -e containerd.io -e docker-ce -e docker-ce-cli
+  register: showhold_result
+  changed_when: false
+  failed_when: false
+  ignore_errors: true
+  become: true
+
+- name: Install Docker CE | Prevent Docker Upgrade
+  ansible.builtin.command:
+    cmd: apt-mark hold containerd.io docker-ce docker-ce-cli
+  when: showhold_result.stdout | int != 3
+  become: true

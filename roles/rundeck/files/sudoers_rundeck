@@ -1,0 +1,1 @@
+rundeck         ALL=(ALL:ALL) NOPASSWD: ALL

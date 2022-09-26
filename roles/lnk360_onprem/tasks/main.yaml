@@ -1,0 +1,142 @@
+---
+- name: "LNK360-specific packages"
+  ansible.builtin.apt:
+    name:
+      # Update netplan to be able to use default route directive
+      - netplan.io
+      # For network configuration
+      - net-tools
+      - ifenslave
+      # For network access
+      - openssh-server
+      - realmd
+      - sssd-tools
+      - sssd
+      - libnss-sss
+      - libpam-sss
+      - adcli
+      - packagekit
+      # For time synchronization
+      - ntp
+      # For software installation
+      - git
+      - gnupg
+      - curl
+      - jq
+      # For user interaction
+      - vim
+      - htop
+      # For safety
+      - molly-guard
+    install_recommends: false
+    update_cache: true
+  become: true
+
+- name: Create /opt/ssl directory
+  ansible.builtin.file:
+    path: /opt/ssl/
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  become: true
+
+- name: Create lego keys directory
+  ansible.builtin.file:
+    path: /opt/ssl/lego/accounts/acme.zerossl.com/security@mutualink.net/keys
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+  become: true
+
+- name: Copy env security key
+  ansible.builtin.copy:
+    src: '{{ env }}_security_key'
+    dest: /opt/ssl/lego/accounts/acme.zerossl.com/security@mutualink.net/keys/security@mutualink.net.key
+    owner: root
+    group: root
+    mode: '0600'
+    backup: true
+  become: true
+
+- name: Copy env account.json
+  ansible.builtin.copy:
+    src: '{{ env }}_lego_account.json'
+    dest: /opt/ssl/lego/accounts/acme.zerossl.com/security@mutualink.net/account.json
+    owner: root
+    group: root
+    mode: '0600'
+    backup: true
+  become: true
+
+- name: Create lego certificates directory
+  ansible.builtin.file:
+    path: /opt/ssl/lego/certificates
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+  become: true
+
+- name: Create lego bin directory
+  ansible.builtin.file:
+    path: /opt/ssl/lego/bin
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+  become: true
+
+- name: Copy lego script to local system
+  ansible.builtin.template:
+    src: lego-certs.j2
+    dest: /opt/ssl/lego/bin/lego-certs.sh
+    owner: root
+    group: root
+    mode: '0700'
+  become: true
+
+- name: Create cron for lego certificate renewal
+  ansible.builtin.cron:
+    name: "LEGO cert renewal"
+    month: "*/2"
+    day: "1"
+    hour: "3"
+    job: /opt/ssl/lego/bin/lego-certs.sh
+  become: true
+
+- name: Create lnk360.key symbolic link
+  ansible.builtin.file:
+    src: /opt/ssl/lego/certificates/lnk360.{{ lego_domain[env] }}.mutualink.net.key
+    dest: /opt/ssl/private/lnk360.key
+    owner: root
+    group: root
+    state: link
+    follow: false
+    force: true
+  become: true
+
+- name: Create lnk360.crt symbolic link
+  ansible.builtin.file:
+    src: /opt/ssl/lego/certificates/lnk360.{{ lego_domain[env] }}.mutualink.net.crt
+    dest: /opt/ssl/certs/lnk360.crt
+    owner: root
+    group: root
+    state: link
+    follow: false
+    force: true
+  become: true
+
+- name: Check for lego certificate files
+  ansible.builtin.shell:
+    cmd: ls /opt/ssl/lego/certificates | wc -l
+  changed_when: false
+  failed_when: false
+  register: cert_file_count
+  become: true
+
+- name: Generate lego certificates
+  ansible.builtin.command: /opt/ssl/lego/bin/lego-certs.sh
+  become: true
+  when: cert_file_count.stdout | int < 4

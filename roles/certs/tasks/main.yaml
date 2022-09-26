@@ -1,0 +1,12 @@
+---
+- name: Copy {{ domain }}.mutualink.net cert and key
+  ansible.builtin.copy:
+    src: '{{ item }}'
+    dest: '{{ ssl_cert_path }}'
+    owner: root
+    group: root
+    mode: 0644
+  loop:
+    - '{{ domain }}.mutualink.net.crt'
+    - '{{ domain }}.mutualink.net.key'
+  become: true

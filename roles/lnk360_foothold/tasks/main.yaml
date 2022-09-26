@@ -1,0 +1,141 @@
+---
+# TODO. Replace this need with rumble dynamic inventory + tags
+- name: Set Mutualink Env Fact
+  ansible.builtin.set_fact:
+    mutualink_env: "{{ ansible_hostname.split('-')[1] }}1"
+
+- name: Disable Automatic Updates
+  ansible.builtin.apt:
+    name: unattended-upgrades
+    state: absent
+    purge: true
+  become: true
+
+- name: Upgrade all packages to latest version
+  ansible.builtin.apt:
+    upgrade: dist
+    update-cache: true
+  become: true
+  when: upgrade_packages | bool
+
+- name: LNK360-specific packages
+  ansible.builtin.apt:
+    name:
+      # Update netplan to be able to use default route directive
+      - netplan.io
+      # For network configuration
+      - net-tools
+      - ifenslave
+      # For troubleshooting networking
+      - traceroute
+      - inetutils-traceroute
+      # For network access
+      - openssh-server
+      # For time synchronization
+      - ntp
+      # For software installation
+      - git
+      - gnupg
+      - curl
+      - jq
+      # For user interaction
+      - vim
+      - htop
+      # For safety
+      - molly-guard
+    install_recommends: false
+    update_cache: true
+  become: true
+
+- name: Remove installer-supplied netplan configuration
+  ansible.builtin.file:
+    path: /etc/netplan/00-installer-config.yaml
+    state: absent
+  become: true
+
+- name: Prepare netplan configuration
+  ansible.builtin.template:
+    src: netplan.j2
+    dest: /etc/netplan/00-config.yaml
+    mode: 0644
+  become: true
+
+- name: Firewall | Stop and Disable UFW
+  ansible.builtin.service:
+    name: ufw
+    enabled: false
+    state: stopped
+
+- name: Firewall | Create directory for firewall scripts
+  ansible.builtin.file:
+    path: /etc/firewall.d
+    state: directory
+    mode: 0755
+  become: true
+
+- name: Firewall | Create Host firewall script
+  ansible.builtin.copy:
+    src: firewall-01_host
+    dest: /etc/firewall.d/01_host
+    mode: a+x
+  become: true
+
+- name: Firewall | Create lnk360-foothold firewall script
+  ansible.builtin.template:
+    src: firewall-02_lnk360-foothold.j2
+    dest: /etc/firewall.d/02_lnk360-foothold
+    mode: 0755
+  become: true
+
+- name: Firewall | Create firewall activation script
+  ansible.builtin.copy:
+    src: activate-firewall
+    dest: /usr/local/sbin/activate-firewall
+    mode: a+x
+  become: true
+
+- name: Firewall | Create firewall systemd service
+  ansible.builtin.copy:
+    src: firewall.service
+    dest: /etc/systemd/system/firewall.service
+    mode: 0644
+  become: true
+
+- name: Firewall | Enable firewall systemd service
+  ansible.builtin.systemd:
+    name: firewall
+    daemon_reload: true
+    enabled: true
+    state: started
+  become: true
+
+- name: Access | Add sudoers | Quality Assurance
+  ansible.builtin.copy:
+    src: sudoers_quality-assurance-foothold-admins
+    dest: /etc/sudoers.d/quality-assurance-foothold-admins
+    owner: root
+    mode: 0440
+  become: true
+  when: ansible_hostname is search('qa-foothold')
+
+- name: Access | Add sudoers | Scale Testing
+  ansible.builtin.copy:
+    src: sudoers_scale-testing-foothold-admins
+    dest: /etc/sudoers.d/scale-testing-foothold-admins
+    owner: root
+    mode: 0440
+  become: true
+  when: ansible_hostname is search('sc-foothold')
+
+- name: Reboot system
+  block:
+    - name: Rebooting system. Please stand by for results.
+      ansible.builtin.reboot:
+        search_paths: '/lib/molly-guard'
+      become: true
+      register: reboot_details
+
+    - name: Reboot results
+      ansible.builtin.debug:
+        var: reboot_details
+  when: reboot_system | bool
